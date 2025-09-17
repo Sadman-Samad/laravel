@@ -6,9 +6,15 @@ use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
-    public function index()
+    public function construct()
     {
-        $name = "Sadman";  // ডাটাবেস থেকে আনা লাগলে Model use করতে পারো
-        return view('home', compact('name'));
+        $this->middleware('auth'); 
     }
-}
+
+    public function index(Request $request)
+    {
+        $name = "Sadman";  
+        $user = $request->user();
+        return view('home', compact('name', 'user'));
+    }
+};
