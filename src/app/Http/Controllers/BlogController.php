@@ -19,7 +19,7 @@ class BlogController extends Controller
         ], 200);
     }
 
-    // POST /api/blogs
+    
     public function store(Request $request)
     {
         $request->validate([
@@ -33,7 +33,7 @@ class BlogController extends Controller
             'title' => $request->title,
             'content' => $request->content,
             'image' => $request->image,
-            'user_id' => 1, 
+            'user_id' => $request->user_id, 
         ]);
 
         if ($request->has('categories')) {
@@ -45,7 +45,7 @@ class BlogController extends Controller
 
 
 
-    // GET /api/blogs/{id}
+    
     public function show(Blog $blog)
     {
         return response()->json([
@@ -55,7 +55,7 @@ class BlogController extends Controller
         ], 200);
     }
 
-    // PUT /api/blogs/{id}
+    
     public function update(Request $request, Blog $blog)
     {
         $request->validate([
