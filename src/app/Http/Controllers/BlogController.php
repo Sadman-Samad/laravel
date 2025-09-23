@@ -1,57 +1,92 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Blog;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class BlogController extends Controller
-
 {
-
-    public function indexa()
+    // GET /api/blogs
+    public function index()
     {
-        return response()->json(Post::all());
+        $blogs = Blog::with(['user', 'categories'])->get();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Blogs retrieved successfully',
+            'data' => $blogs
+        ], 200);
     }
 
-   
+    // POST /api/blogs
     public function store(Request $request)
     {
         $request->validate([
-            'title' => 'required',
-            'content' => 'required',
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'image' => 'nullable|string',
+            'categories' => 'nullable|array',
         ]);
 
-        $post = Post::create($request->all());
+        $blog = Blog::create([
+            'title' => $request->title,
+            'content' => $request->content,
+            'image' => $request->image,
+            'user_id' => 1, 
+        ]);
 
-        return response()->json($post, 201);
+        if ($request->has('categories')) {
+            $blog->categories()->attach($request->categories);
+        }
+
+        return response()->json($blog, 201);
     }
 
-    // GET /api/posts/{id}
-    public function show(Post $post)
+
+
+    // GET /api/blogs/{id}
+    public function show(Blog $blog)
     {
-        return response()->json($post);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Blog retrieved successfully',
+            'data' => $blog->load(['user', 'categories'])
+        ], 200);
     }
 
-   
-    public function update(Request $request, Post $post)
+    // PUT /api/blogs/{id}
+    public function update(Request $request, Blog $blog)
     {
         $request->validate([
-            'title' => 'required',
-            'content' => 'required',
+            'title'   => 'sometimes|required|string|max:255',
+            'content' => 'sometimes|required|string',
+            'categories' => 'array',
+            'categories.*' => 'exists:categories,id',
         ]);
 
-        $post->update($request->all());
+        $blog->update($request->only(['title', 'content', 'image']));
 
-        return response()->json($post);
+        if ($request->has('categories')) {
+            $blog->categories()->sync($request->categories);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Blog updated successfully',
+            'data' => $blog->load(['user', 'categories'])
+        ], 200);
     }
 
-    
-    public function destroy(Post $post)
+    // DELETE /api/blogs/{id}
+    public function destroy(Blog $blog)
     {
-        $post->delete();
+        $blog->delete();
 
-        return response()->json(null, 204);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Blog deleted successfully',
+            'data' => null
+        ], 200);
     }
 }
