@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Blog;
 use Illuminate\Http\Request;
 
 class BlogController extends Controller
 {
-    // GET /api/blogs
+    //all
     public function index()
     {
         $blogs = Blog::with(['user', 'categories'])->get();
@@ -19,7 +20,7 @@ class BlogController extends Controller
         ], 200);
     }
 
-    
+    //create
     public function store(Request $request)
     {
         $request->validate([
@@ -29,11 +30,19 @@ class BlogController extends Controller
             'categories' => 'nullable|array',
         ]);
 
+        try {
+            $user = JWTAuth::parseToken()->authenticate(); 
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Token is invalid or missing'], 401);
+        }
         $blog = Blog::create([
-            'title' => $request->title,
+            'title'   => $request->title,
             'content' => $request->content,
-            'image' => $request->image,
-            'user_id' => $request->user_id, 
+            'image'   => $request->image,
+            'user_id' => $user->id,
         ]);
 
         if ($request->has('categories')) {
@@ -44,8 +53,7 @@ class BlogController extends Controller
     }
 
 
-
-    
+    //by id
     public function show(Blog $blog)
     {
         return response()->json([
@@ -55,7 +63,7 @@ class BlogController extends Controller
         ], 200);
     }
 
-    
+
     public function update(Request $request, Blog $blog)
     {
         $request->validate([
@@ -70,15 +78,14 @@ class BlogController extends Controller
         if ($request->has('categories')) {
             $blog->categories()->sync($request->categories);
         }
-
+        
         return response()->json([
             'status' => 'success',
             'message' => 'Blog updated successfully',
             'data' => $blog->load(['user', 'categories'])
         ], 200);
     }
-
-    // DELETE /api/blogs/{id}
+    //delete
     public function destroy(Blog $blog)
     {
         $blog->delete();
