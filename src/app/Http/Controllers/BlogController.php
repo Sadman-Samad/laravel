@@ -30,19 +30,19 @@ class BlogController extends Controller
             'categories' => 'nullable|array',
         ]);
 
-        try {
-            $user = JWTAuth::parseToken()->authenticate(); 
-            if (!$user) {
-                return response()->json(['error' => 'Unauthorized'], 401);
-            }
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Token is invalid or missing'], 401);
-        }
+        // try {
+        //     $user = JWTAuth::parseToken()->authenticate(); 
+        //     if (!$user) {
+        //         return response()->json(['error' => 'Unauthorized'], 401);
+        //     }
+        // } catch (\Exception $e) {
+        //     return response()->json(['error' => 'Token is invalid or missing'], 401);
+        // }
         $blog = Blog::create([
             'title'   => $request->title,
             'content' => $request->content,
             'image'   => $request->image,
-            'user_id' => $user->id,
+            'user_id' => $request->user_id,
         ]);
 
         if ($request->has('categories')) {

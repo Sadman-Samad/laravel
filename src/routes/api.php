@@ -6,3 +6,4 @@ use App\Http\Controllers\Api\LoginapiController;
 
 Route::apiResource('blogs', BlogController::class);
 Route::post('/login', [LoginapiController::class, 'login']);
+Route::post('/refresh', [LoginapiController::class, 'refresh']);
