@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Blog;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Log;
 class BlogController extends Controller
 {
     //all
@@ -30,19 +30,20 @@ class BlogController extends Controller
             'categories' => 'nullable|array',
         ]);
 
-        // try {
-        //     $user = JWTAuth::parseToken()->authenticate(); 
-        //     if (!$user) {
-        //         return response()->json(['error' => 'Unauthorized'], 401);
-        //     }
-        // } catch (\Exception $e) {
-        //     return response()->json(['error' => 'Token is invalid or missing'], 401);
-        // }
+        try {
+            $user = JWTAuth::parseToken()->authenticate(); 
+            Log::info($user);
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Token is invalid or missing'], 401);
+        }
         $blog = Blog::create([
             'title'   => $request->title,
             'content' => $request->content,
             'image'   => $request->image,
-            'user_id' => $request->user_id,
+            'user_id' => $user->id,
         ]);
 
         if ($request->has('categories')) {
@@ -73,7 +74,17 @@ class BlogController extends Controller
             'categories.*' => 'exists:categories,id',
         ]);
 
-        $blog->update($request->only(['title', 'content', 'image']));
+        try {
+            $user = JWTAuth::parseToken()->authenticate(); 
+            Log::info($user);
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Token is invalid or missing'], 401);
+        }
+        
+        $blog->update($request->only(['title', 'content', 'image','user_id']));
 
         if ($request->has('categories')) {
             $blog->categories()->sync($request->categories);

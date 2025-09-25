@@ -29,11 +29,8 @@ class LoginapiController extends Controller
         $user = auth()->user();
 
         $refreshToken = bin2hex(random_bytes(32));
-
-
         $user->refresh_token = $refreshToken;
         $user->save();
-
 
         return response()->json([
             'success' => true,
@@ -42,7 +39,6 @@ class LoginapiController extends Controller
             'refresh_token' => $refreshToken
         ]);
     }
-
 
     public function refresh(Request $request)
     {
@@ -54,7 +50,6 @@ class LoginapiController extends Controller
                 'message' => 'Refresh token is required'
             ], 400);
         }
-
       
         $user = \App\Models\User::where('refresh_token', $refreshToken)->first();
 
@@ -66,10 +61,7 @@ class LoginapiController extends Controller
         }
 
         try {
-           
             $newAccessToken = JWTAuth::fromUser($user);
-
-            
             $newRefreshToken = bin2hex(random_bytes(32));
             $user->refresh_token = $newRefreshToken;
             $user->save();
