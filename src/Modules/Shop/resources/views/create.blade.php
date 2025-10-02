@@ -41,4 +41,3 @@
         <button type="submit" class="btn btn-primary">Create Shop</button>
     </form>
 </div>
-

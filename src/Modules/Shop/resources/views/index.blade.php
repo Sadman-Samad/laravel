@@ -6,5 +6,4 @@
     @foreach ($shop as $item)
         {{ $item }}
     @endforeach
-
 </x-shop::layouts.master>
