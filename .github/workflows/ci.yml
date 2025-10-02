@@ -10,14 +10,17 @@ jobs:
   laravel-tests:
     runs-on: ubuntu-latest
 
+    # ------------------------
+    # Services: MySQL Database
+    # ------------------------
     services:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_DATABASE: laravel
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_USER: laravel
-          MYSQL_PASSWORD: laravel
+          MYSQL_DATABASE: laravel       # Database name for Laravel
+          MYSQL_ROOT_PASSWORD: root     # Root password
+          MYSQL_USER: laravel           # DB username for Laravel
+          MYSQL_PASSWORD: laravel       # DB password for Laravel
         ports:
           - 3306:3306
         options: >-
@@ -27,39 +30,60 @@ jobs:
           --health-retries=3
 
     steps:
+
+      # ------------------------
       # 1️⃣ Checkout code
+      # ------------------------
       - name: Checkout code
         uses: actions/checkout@v4
+        # Fetches your repository code so CI can work with it
 
+      # ------------------------
       # 2️⃣ Ensure Modules folder exists
+      # ------------------------
       - name: List Modules
         run: |
           ls -l src/Modules
           echo "Modules folder checked"
+        # Quick check to confirm CI sees the module folder correctly
 
-      # 3️⃣ Setup PHP
+      # ------------------------
+      # 3️⃣ Setup PHP environment
+      # ------------------------
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.2'                 # PHP version
           extensions: mbstring, pdo, pdo_mysql, intl, bcmath
-          tools: composer:v2
+          tools: composer:v2                 # Composer version
+        # Sets up PHP environment with all needed extensions
 
-      # 4️⃣ Composer install + autoload
+      # ------------------------
+      # 4️⃣ Install Composer dependencies and autoload
+      # ------------------------
       - name: Install Composer Dependencies
         run: |
-          cd src
+          cd src                             # Laravel is inside `src`
           composer install --no-progress --prefer-dist --optimize-autoloader
-          composer dump-autoload
+          composer dump-autoload -o
+        # Installs packages and generates optimized autoload
+        # `-o` ensures all classes, including modules, are discovered
 
-      # 5️⃣ Setup .env
+      # ------------------------
+      # 5️⃣ Setup Laravel .env
+      # ------------------------
       - name: Setup .env
         run: |
-          cp src/.env.example src/.env
-          # Replace DB_HOST if needed (GitHub Actions MySQL runs on localhost)
-          php -r "file_put_contents('src/.env', str_replace('DB_HOST=127.0.0.1', 'DB_HOST=127.0.0.1', file_get_contents('src/.env')));"
+          cd src
+          cp .env.example .env
+          # Ensure Laravel uses MySQL in CI
+          php -r "file_put_contents('.env', str_replace('DB_CONNECTION=sqlite', 'DB_CONNECTION=mysql', file_get_contents('.env')));"
+          php -r "file_put_contents('.env', str_replace('DB_HOST=127.0.0.1', 'DB_HOST=127.0.0.1', file_get_contents('.env')));"
+        # This ensures CI uses MySQL and not SQLite, which avoids missing file errors
 
-      # 6️⃣ Clear caches (after autoload)
+      # ------------------------
+      # 6️⃣ Clear Laravel caches
+      # ------------------------
       - name: Clear Laravel caches
         run: |
           cd src
@@ -67,21 +91,33 @@ jobs:
           php artisan cache:clear
           php artisan route:clear
           php artisan view:clear
+        # Laravel caches may cause issues with modules or config
+        # Clearing ensures the fresh environment is loaded
 
-      # 7️⃣ Generate App Key
+      # ------------------------
+      # 7️⃣ Generate Laravel App Key
+      # ------------------------
       - name: Generate App Key
         run: |
           cd src
           php artisan key:generate
+        # Needed for encryption and session security
 
-      # 8️⃣ Run migrations
+      # ------------------------
+      # 8️⃣ Run Database Migrations
+      # ------------------------
       - name: Run Database Migrations
         run: |
           cd src
           php artisan migrate --force
+        # Sets up database schema in MySQL
 
+      # ------------------------
       # 9️⃣ Run Laravel Tests
+      # ------------------------
       - name: Run Tests
         run: |
           cd src
           php artisan test --verbose
+        # Executes all tests to verify the app works in CI
+
