@@ -49,6 +49,7 @@ class ShopController extends Controller
     }
 
 
+    
     /**
      * Show the specified resource.
      */
