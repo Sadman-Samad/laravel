@@ -27,33 +27,40 @@ jobs:
           --health-retries=3
 
     steps:
-      # কোড চেকআউট
+      # 1️⃣ Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # PHP সেটআপ
+      # 2️⃣ Ensure Modules folder exists
+      - name: List Modules
+        run: |
+          ls -l src/Modules
+          echo "Modules folder checked"
+
+      # 3️⃣ Setup PHP
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, pdo, pdo_mysql, intl
+          extensions: mbstring, pdo, pdo_mysql, intl, bcmath
           tools: composer:v2
 
-      # Ensure Modules folder exists before composer dump-autoload
-      - name: Copy full project (optional if needed)
-        run: |
-          cd src
-          ls -l Modules
-
-      # Composer install with optimize-autoloader
-      - name: Install Dependencies
+      # 4️⃣ Composer install + autoload
+      - name: Install Composer Dependencies
         run: |
           cd src
           composer install --no-progress --prefer-dist --optimize-autoloader
           composer dump-autoload
 
-      # Clear caches after autoload
-      - name: Clear Cache
+      # 5️⃣ Setup .env
+      - name: Setup .env
+        run: |
+          cp src/.env.example src/.env
+          # Replace DB_HOST if needed (GitHub Actions MySQL runs on localhost)
+          php -r "file_put_contents('src/.env', str_replace('DB_HOST=127.0.0.1', 'DB_HOST=127.0.0.1', file_get_contents('src/.env')));"
+
+      # 6️⃣ Clear caches (after autoload)
+      - name: Clear Laravel caches
         run: |
           cd src
           php artisan config:clear
@@ -61,25 +68,20 @@ jobs:
           php artisan route:clear
           php artisan view:clear
 
-      # Setup .env
-      - name: Setup .env
-        run: |
-          cp src/.env.example src/.env
-
-      # App Key generate
+      # 7️⃣ Generate App Key
       - name: Generate App Key
         run: |
           cd src
           php artisan key:generate
 
-      # DB Migration
-      - name: Run Migrations
+      # 8️⃣ Run migrations
+      - name: Run Database Migrations
         run: |
           cd src
           php artisan migrate --force
 
-      # Laravel Tests
+      # 9️⃣ Run Laravel Tests
       - name: Run Tests
         run: |
           cd src
-          php artisan test
+          php artisan test --verbose
