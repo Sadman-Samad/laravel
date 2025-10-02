@@ -1,5 +1,6 @@
 name: Laravel CI
 
+# Trigger workflow on pushes and pull requests to main
 on:
   push:
     branches: ["main"]
@@ -10,80 +11,49 @@ jobs:
   laravel-tests:
     runs-on: ubuntu-latest
 
-    # ------------------------
-    # Services: MySQL Database
-    # ------------------------
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_DATABASE: laravel       # Database name for Laravel
-          MYSQL_ROOT_PASSWORD: root     # Root password
-          MYSQL_USER: laravel           # DB username for Laravel
-          MYSQL_PASSWORD: laravel       # DB password for Laravel
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
-
-      # ------------------------
-      # 1️⃣ Checkout code
-      # ------------------------
+      # 1️⃣ Checkout the code
       - name: Checkout code
         uses: actions/checkout@v4
-        # Fetches your repository code so CI can work with it
 
-      # ------------------------
-      # 2️⃣ Ensure Modules folder exists
-      # ------------------------
+      # 2️⃣ List Modules folder for debug
       - name: List Modules
         run: |
           ls -l src/Modules
           echo "Modules folder checked"
-        # Quick check to confirm CI sees the module folder correctly
 
-      # ------------------------
-      # 3️⃣ Setup PHP environment
-      # ------------------------
+      # 3️⃣ Setup PHP with required extensions and composer
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'                 # PHP version
-          extensions: mbstring, pdo, pdo_mysql, intl, bcmath
-          tools: composer:v2                 # Composer version
-        # Sets up PHP environment with all needed extensions
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_sqlite, intl, bcmath
+          tools: composer:v2
 
-      # ------------------------
-      # 4️⃣ Install Composer dependencies and autoload
-      # ------------------------
+      # 4️⃣ Install Composer dependencies & optimize autoload
       - name: Install Composer Dependencies
         run: |
-          cd src                             # Laravel is inside `src`
+          cd src
           composer install --no-progress --prefer-dist --optimize-autoloader
           composer dump-autoload -o
-        # Installs packages and generates optimized autoload
-        # `-o` ensures all classes, including modules, are discovered
 
-      # ------------------------
-      # 5️⃣ Setup Laravel .env
-      # ------------------------
-      - name: Setup .env
+      # 5️⃣ Setup .env for SQLite
+      - name: Setup .env for SQLite
         run: |
           cd src
           cp .env.example .env
-          # Ensure Laravel uses MySQL in CI
-          php -r "file_put_contents('.env', str_replace('DB_CONNECTION=sqlite', 'DB_CONNECTION=mysql', file_get_contents('.env')));"
-          php -r "file_put_contents('.env', str_replace('DB_HOST=127.0.0.1', 'DB_HOST=127.0.0.1', file_get_contents('.env')));"
-        # This ensures CI uses MySQL and not SQLite, which avoids missing file errors
+          # Configure SQLite
+          php -r "file_put_contents('.env', str_replace('DB_CONNECTION=mysql', 'DB_CONNECTION=sqlite', file_get_contents('.env')));"
+          php -r "file_put_contents('.env', str_replace('DB_DATABASE=', 'DB_DATABASE=' . __DIR__ . '/database/database.sqlite', file_get_contents('.env')));"
 
-      # ------------------------
-      # 6️⃣ Clear Laravel caches
-      # ------------------------
+      # 6️⃣ Ensure SQLite database file exists
+      - name: Create SQLite database file
+        run: |
+          cd src
+          mkdir -p database
+          touch database/database.sqlite
+
+      # 7️⃣ Clear Laravel caches
       - name: Clear Laravel caches
         run: |
           cd src
@@ -91,33 +61,21 @@ jobs:
           php artisan cache:clear
           php artisan route:clear
           php artisan view:clear
-        # Laravel caches may cause issues with modules or config
-        # Clearing ensures the fresh environment is loaded
 
-      # ------------------------
-      # 7️⃣ Generate Laravel App Key
-      # ------------------------
+      # 8️⃣ Generate Laravel app key
       - name: Generate App Key
         run: |
           cd src
           php artisan key:generate
-        # Needed for encryption and session security
 
-      # ------------------------
-      # 8️⃣ Run Database Migrations
-      # ------------------------
+      # 9️⃣ Run database migrations (on SQLite)
       - name: Run Database Migrations
         run: |
           cd src
           php artisan migrate --force
-        # Sets up database schema in MySQL
 
-      # ------------------------
-      # 9️⃣ Run Laravel Tests
-      # ------------------------
+      # 🔟 Run Laravel tests
       - name: Run Tests
         run: |
           cd src
           php artisan test --verbose
-        # Executes all tests to verify the app works in CI
-
