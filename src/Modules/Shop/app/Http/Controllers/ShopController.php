@@ -3,6 +3,7 @@
 namespace Modules\Shop\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Blog;
 use Illuminate\Http\Request;
 
 class ShopController extends Controller
@@ -12,7 +13,8 @@ class ShopController extends Controller
      */
     public function index()
     {
-        return view('shop::index');
+        $shop = Blog::all();
+        return view('shop::index', ['shop' => $shop]);
     }
 
     /**
@@ -20,13 +22,32 @@ class ShopController extends Controller
      */
     public function create()
     {
-        return view('shop::create');
+        return view('shop::create'); // just show the form
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request) {}
+    public function store(Request $request)
+    {
+        // validate input
+        $validated = $request->validate([
+            "title"   => "required|string|max:255",
+            "content" => "required|string|max:255",
+            "image"   => "required|string|max:255",
+        ]);
+
+        // create new Blog/Shop
+        Blog::create([
+            "title"   => $validated["title"],
+            "content" => $validated["content"],
+            "user_id" => $request->user()->id,
+            "image"   => $validated["image"],
+        ]);
+
+        return redirect()->route('shop.index')->with('success', 'Shop created successfully!');
+    }
+
 
     /**
      * Show the specified resource.
