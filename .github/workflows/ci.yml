@@ -1,6 +1,6 @@
 name: Laravel CI
 
-# Trigger workflow on pushes and pull requests to main
+# Trigger on pushes and pull requests to main branch
 on:
   push:
     branches: ["main"]
@@ -11,49 +11,67 @@ jobs:
   laravel-tests:
     runs-on: ubuntu-latest
 
+    # MySQL service is optional; we'll use SQLite for CI
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: laravel
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_USER: laravel
+          MYSQL_PASSWORD: laravel
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
     steps:
-      # 1️⃣ Checkout the code
+      # 1️⃣ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ List Modules folder for debug
+      # 2️⃣ List Modules folder (sanity check)
       - name: List Modules
         run: |
           ls -l src/Modules
-          echo "Modules folder checked"
+          echo "Modules folder exists"
 
       # 3️⃣ Setup PHP with required extensions and composer
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, pdo, pdo_sqlite, intl, bcmath
+          extensions: mbstring, pdo, pdo_mysql, sqlite, intl, bcmath
           tools: composer:v2
 
-      # 4️⃣ Install Composer dependencies & optimize autoload
+      # 4️⃣ Install Composer dependencies and optimize autoload
       - name: Install Composer Dependencies
         run: |
           cd src
           composer install --no-progress --prefer-dist --optimize-autoloader
           composer dump-autoload -o
 
-      # 5️⃣ Setup .env for SQLite
-      - name: Setup .env for SQLite
+      # 5️⃣ Setup .env file for CI
+      # Use SQLite for database and file-based cache to avoid missing tables
+      - name: Setup .env for CI
         run: |
           cd src
           cp .env.example .env
-          # Configure SQLite
+
+          # Use SQLite as the database
           php -r "file_put_contents('.env', str_replace('DB_CONNECTION=mysql', 'DB_CONNECTION=sqlite', file_get_contents('.env')));"
           php -r "file_put_contents('.env', str_replace('DB_DATABASE=', 'DB_DATABASE=' . __DIR__ . '/database/database.sqlite', file_get_contents('.env')));"
 
-      # 6️⃣ Ensure SQLite database file exists
-      - name: Create SQLite database file
-        run: |
-          cd src
-          mkdir -p database
+          # Use file cache to avoid missing cache table
+          php -r "file_put_contents('.env', str_replace('CACHE_DRIVER=database', 'CACHE_DRIVER=file', file_get_contents('.env')));"
+
+          # Ensure the SQLite file exists
           touch database/database.sqlite
 
-      # 7️⃣ Clear Laravel caches
+      # 6️⃣ Clear caches (after .env and autoload)
       - name: Clear Laravel caches
         run: |
           cd src
@@ -62,19 +80,19 @@ jobs:
           php artisan route:clear
           php artisan view:clear
 
-      # 8️⃣ Generate Laravel app key
+      # 7️⃣ Generate Laravel App Key
       - name: Generate App Key
         run: |
           cd src
           php artisan key:generate
 
-      # 9️⃣ Run database migrations (on SQLite)
-      - name: Run Database Migrations
+      # 8️⃣ Run database migrations
+      - name: Run Migrations
         run: |
           cd src
           php artisan migrate --force
 
-      # 🔟 Run Laravel tests
+      # 9️⃣ Run Laravel Tests
       - name: Run Tests
         run: |
           cd src
