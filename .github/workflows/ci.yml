@@ -1,6 +1,5 @@
 name: Laravel CI
 
-# কখন রান হবে
 on:
   push:
     branches: ["main"]
@@ -40,17 +39,32 @@ jobs:
           extensions: mbstring, pdo, pdo_mysql, intl
           tools: composer:v2
 
-      # Composer dependency install
+      # Ensure Modules folder exists before composer dump-autoload
+      - name: Copy full project (optional if needed)
+        run: |
+          cd src
+          ls -l Modules
+
+      # Composer install with optimize-autoloader
       - name: Install Dependencies
         run: |
           cd src
           composer install --no-progress --prefer-dist --optimize-autoloader
+          composer dump-autoload
 
-      # .env ফাইল তৈরি
+      # Clear caches after autoload
+      - name: Clear Cache
+        run: |
+          cd src
+          php artisan config:clear
+          php artisan cache:clear
+          php artisan route:clear
+          php artisan view:clear
+
+      # Setup .env
       - name: Setup .env
         run: |
           cp src/.env.example src/.env
-          php -r "file_put_contents('src/.env', str_replace('DB_HOST=127.0.0.1', 'DB_HOST=127.0.0.1', file_get_contents('src/.env')));"
 
       # App Key generate
       - name: Generate App Key
