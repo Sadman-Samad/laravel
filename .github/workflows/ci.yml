@@ -1,6 +1,6 @@
 name: Laravel CI
 
-# Trigger on pushes and pull requests to main branch
+# Trigger the workflow on pushes or pull requests to the main branch
 on:
   push:
     branches: ["main"]
@@ -9,9 +9,10 @@ on:
 
 jobs:
   laravel-tests:
+    # Use the latest Ubuntu environment for the runner
     runs-on: ubuntu-latest
 
-    # MySQL service is optional; we'll use SQLite for CI
+    # Setup MySQL service if you want to test with MySQL (optional, but not used for SQLite here)
     services:
       mysql:
         image: mysql:8.0
@@ -29,49 +30,48 @@ jobs:
           --health-retries=3
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout the repository code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ List Modules folder (sanity check)
+      # 2️⃣ Verify that your Modules folder exists
       - name: List Modules
         run: |
           ls -l src/Modules
-          echo "Modules folder exists"
+          echo "Modules folder checked"
 
-      # 3️⃣ Setup PHP with required extensions and composer
+      # 3️⃣ Setup PHP environment with required extensions
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, pdo, pdo_mysql, sqlite, intl, bcmath
+          extensions: mbstring, pdo, pdo_mysql, intl, bcmath
           tools: composer:v2
 
-      # 4️⃣ Install Composer dependencies and optimize autoload
+      # 4️⃣ Install Composer dependencies with optimized autoloader
       - name: Install Composer Dependencies
         run: |
           cd src
           composer install --no-progress --prefer-dist --optimize-autoloader
-          composer dump-autoload -o
+          composer dump-autoload
 
-      # 5️⃣ Setup .env file for CI
-      # Use SQLite for database and file-based cache to avoid missing tables
+      # 5️⃣ Setup environment variables for CI
       - name: Setup .env for CI
         run: |
           cd src
           cp .env.example .env
 
-          # Use SQLite as the database
+          # Use SQLite for database to avoid MySQL issues in CI
           php -r "file_put_contents('.env', str_replace('DB_CONNECTION=mysql', 'DB_CONNECTION=sqlite', file_get_contents('.env')));"
           php -r "file_put_contents('.env', str_replace('DB_DATABASE=', 'DB_DATABASE=' . __DIR__ . '/database/database.sqlite', file_get_contents('.env')));"
 
-          # Use file cache to avoid missing cache table
+          # Use file cache to prevent 'no such table: cache' errors
           php -r "file_put_contents('.env', str_replace('CACHE_DRIVER=database', 'CACHE_DRIVER=file', file_get_contents('.env')));"
 
-          # Ensure the SQLite file exists
+          # Ensure SQLite file exists
           touch database/database.sqlite
 
-      # 6️⃣ Clear caches (after .env and autoload)
+      # 6️⃣ Clear Laravel caches (config, route, view, application cache)
       - name: Clear Laravel caches
         run: |
           cd src
@@ -80,19 +80,19 @@ jobs:
           php artisan route:clear
           php artisan view:clear
 
-      # 7️⃣ Generate Laravel App Key
+      # 7️⃣ Generate application key (required for encryption, sessions, etc.)
       - name: Generate App Key
         run: |
           cd src
           php artisan key:generate
 
-      # 8️⃣ Run database migrations
-      - name: Run Migrations
+      # 8️⃣ Run database migrations to create tables
+      - name: Run Database Migrations
         run: |
           cd src
           php artisan migrate --force
 
-      # 9️⃣ Run Laravel Tests
+      # 9️⃣ Run all Laravel tests with verbose output
       - name: Run Tests
         run: |
           cd src
